@@ -1,0 +1,8 @@
+name: HelloWorldPlugin
+main: com.deax.dev.kotlingradle.MainPlugin
+version: 0.1
+author: DeaX
+description: Самый глупый плагин
+command:
+  echo:
+    usage: '/echo Hello world'
