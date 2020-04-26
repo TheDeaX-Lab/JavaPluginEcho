@@ -1,3 +1,3 @@
 #!/bin/bash
-./gradlew shadowJar
+./gradlew shadowJar --info
 cp ./build/libs/KotlinDev-1.0-SNAPSHOT.jar ~/Desktop/WorkingServer/plugins/

@@ -3,13 +3,20 @@ main: com.deax.dev.kotlingradle.MainPlugin
 version: 0.1
 author: DeaX
 description: Самый глупый плагин
+api-version: 1.15
 commands:
   #echo:
   #  usage: '/echo Hello world'
   #  description: 'Says your arguments'
-  setcompas:
+  #setcompas:
+  #  usage: |-
+  #    /setcompas <x as double> <z as double>
+  #    /setcompas clear
+  #  description: 'Navigate compas for your coordinates or clear to spawn'
+  multifarm:
     usage: |-
-      /setcompas x z
-      or
-      /setcompas clear
-    description: 'Navigate compas for your coordinates or clear to spawn'
+      /multifarm clear
+      /multifarm enable
+      /multifarm disable
+      /multifarm range <radius as integer>
+    description: 'Designed for farm enthusiasts'
