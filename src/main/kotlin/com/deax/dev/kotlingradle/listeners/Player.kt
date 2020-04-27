@@ -57,7 +57,7 @@ data class PlayerData(
 
         @EventHandler
         public fun onQuit(e: PlayerQuitEvent) {
-            with(data[e.player.uniqueId]!!) {
+            with(PlayerData[e.player]) {
                 config.save(file)
             }
             data.remove(e.player.uniqueId)

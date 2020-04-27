@@ -64,7 +64,7 @@ object MultiFarmCmd : CommandExecutor {
                     }
                 }
             }
-            else -> sender.sendMessage("Only for players")
+            else -> sender.sendMessage(ChatColor.RED.toString() + "Only for players")
         }
         return true
     }

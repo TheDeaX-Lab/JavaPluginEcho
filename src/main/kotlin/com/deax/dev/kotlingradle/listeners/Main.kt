@@ -7,8 +7,40 @@ import org.bukkit.enchantments.Enchantment
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.event.EventHandler
+import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.Damageable
 import org.bukkit.inventory.meta.ItemMeta
+import kotlin.math.ceil
+
+// Функция нанесения разрушение инструмента
+fun ItemStack.damageDurability(dmg: Int): ItemStack {
+    return this.apply {
+        itemMeta = (itemMeta as Damageable).apply {
+            val k = getEnchantmentLevel(Enchantment.DURABILITY) + 1
+            damage += ceil(dmg.toDouble() / k.toDouble()).toInt()
+            if (type.maxDurability <= damage) {
+                type = AIR
+            }
+        } as ItemMeta
+    }
+}
+
+// Функция определения оставшейся прочности у предмета
+fun ItemStack.durability() = (type.maxDurability - (itemMeta as Damageable).damage) * (getEnchantmentLevel(
+    Enchantment.DURABILITY
+) + 1)
+
+inline fun matrixLoop(range: Int, qux: (i: Int, j: Int) -> Boolean) {
+    loop1@ for (i in -range..range) {
+        for (j in -range..range) {
+            when (qux(i, j)) {
+                true -> break@loop1
+                false -> {
+                }
+            }
+        }
+    }
+}
 
 object MainListener : Listener {
     private val plugin: MainPlugin = MainPlugin.instance;
@@ -16,9 +48,9 @@ object MainListener : Listener {
     @EventHandler
     public fun onBlockPlaceEvent(e: BlockPlaceEvent) {
         with(e) {
+            // Получаем данные игрока из памяти плагина
+            val pdata = PlayerData[player]
             with(player) {
-                // Получаем данные игрока из памяти плагина
-                val pdata: PlayerData = PlayerData[uniqueId]!!
                 // Включен ли режим посадки или засева у игрока?
                 if (pdata.multiplaceEnabled) {
                     with(inventory) {
@@ -43,17 +75,22 @@ object MainListener : Listener {
                                 // Требуемое количество семян
                                 var cused = 0
 
-                                // Проходимся по квадрату range*2 + 1
-                                loop@ for (i in -pdata.range..pdata.range) {
-                                    for (j in -pdata.range..pdata.range) {
-                                        if (cused >= camount) break@loop
-                                        val blkdown = world.getBlockAt(block.x + i, block.y - 1, block.z + j);
-                                        val blkup = world.getBlockAt(block.x + i, block.y, block.z + j)
-                                        if (blkdown.type == FARMLAND && blkup.type.isAir) {
-                                            blkup.type = cropType
-                                            cused += 1;
-                                        }
+                                matrixLoop(pdata.range) { i, j ->
+                                    // Заканчиваем цикл когда семян становится маловато
+                                    if (cused >= camount) return@matrixLoop true
+                                    // Нижний блок
+                                    val blkdown = world.getBlockAt(block.x + i, block.y - 1, block.z + j)
+                                    // Верхний блок
+                                    val blkup = world.getBlockAt(block.x + i, block.y, block.z + j)
+                                    // Проверка того что внизу вспаханная земля, а сверху воздух
+                                    if (blkdown.type == FARMLAND && blkup.type.isAir) {
+                                        // Засеиваем верхний блок
+                                        blkup.type = cropType
+                                        // Добавляем использованные семена
+                                        cused += 1;
                                     }
+                                    // Продолжаем цикл
+                                    return@matrixLoop false
                                 }
                                 // Применяем оставшееся количество семян
                                 setItemInMainHand(itemInMainHand.apply { amount = camount - cused })
@@ -62,49 +99,36 @@ object MainListener : Listener {
                             DIAMOND_HOE, GOLDEN_HOE, IRON_HOE, STONE_HOE, WOODEN_HOE -> {
                                 // Текущая прочность
                                 val durability =
-                                    itemInMainHand.type.maxDurability - (itemInMainHand.itemMeta as Damageable).damage
-                                // Прочность за 1 использование с учетом зачарования прочности
-                                val delt = 1.0 / (itemInMainHand.getEnchantmentLevel(Enchantment.DURABILITY) + 1.0)
+                                    itemInMainHand.durability()
                                 // Прочность которая потребуется суммарно для этой работы
-                                var dmg = delt
+                                var dmg = 1
                                 // Проходимся по квадрату range*2 + 1
-                                loop@ for (i in -pdata.range..pdata.range) {
-                                    for (j in -pdata.range..pdata.range) {
-                                        // Нижний блок
-                                        val blkdown = world.getBlockAt(block.x + i, block.y, block.z + j)
-                                        // Верхний блок
-                                        val blkup = world.getBlockAt(block.x + i, block.y + 1, block.z + j)
-                                        // Если верхний блок пустой
-                                        if (blkup.type.isAir) {
-                                            // Если прочности меньше или равно требуемой мы выходим из цикла
-                                            if (durability <= dmg) break@loop
-                                            // Определяем наличие блока из подобранных 3 типов земли
-                                            when (blkdown.type) {
-                                                DIRT, GRASS_BLOCK, GRASS_PATH -> {
-                                                    // Превращаем землю в грядку
-                                                    blkdown.type = FARMLAND
-                                                    // Добавляем требуемую прочность
-                                                    dmg += delt
-                                                }
-                                                else -> {
-                                                }
+                                matrixLoop(pdata.range) { i, j ->
+                                    // Нижний блок
+                                    val blkdown = world.getBlockAt(block.x + i, block.y, block.z + j)
+                                    // Верхний блок
+                                    val blkup = world.getBlockAt(block.x + i, block.y + 1, block.z + j)
+                                    // Если верхний блок пустой
+                                    if (blkup.type.isAir) {
+                                        // Если прочности меньше или равно требуемой мы выходим из цикла
+                                        if (durability <= dmg) return@matrixLoop true
+                                        // Определяем наличие блока из подобранных 3 типов земли
+                                        when (blkdown.type) {
+                                            DIRT, GRASS_BLOCK, GRASS_PATH -> {
+                                                // Превращаем землю в грядку
+                                                blkdown.type = FARMLAND
+                                                // Добавляем требуемую прочность
+                                                dmg++
+                                            }
+                                            else -> {
                                             }
                                         }
                                     }
+                                    // Продолжаем цикл
+                                    return@matrixLoop false
                                 }
-
-                                // Задаем прочность предмету или обнуляем
-                                setItemInMainHand(itemInMainHand.apply {
-                                    // Применяем свойства предмета
-                                    itemMeta = ((itemMeta as Damageable).apply {
-                                        // Применяем уровень ломанности
-                                        damage += Math.ceil(dmg).toInt()
-                                        // Если единица ломанности больше максимальной прочности то обнуляем
-                                        if (damage >= type.maxDurability) {
-                                            type = AIR
-                                        }
-                                    }) as ItemMeta
-                                })
+                                // Наносим разрушение инструменту
+                                setItemInMainHand(itemInMainHand.damageDurability(dmg))
                             }
                             else -> {
                             }
