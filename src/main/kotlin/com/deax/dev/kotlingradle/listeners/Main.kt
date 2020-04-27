@@ -13,16 +13,14 @@ import org.bukkit.inventory.meta.ItemMeta
 import kotlin.math.ceil
 
 // Функция нанесения разрушение инструмента
-fun ItemStack.damageDurability(dmg: Int): ItemStack {
-    return this.apply {
-        itemMeta = (itemMeta as Damageable).apply {
-            val k = getEnchantmentLevel(Enchantment.DURABILITY) + 1
-            damage += ceil(dmg.toDouble() / k.toDouble()).toInt()
-            if (type.maxDurability <= damage) {
-                type = AIR
-            }
-        } as ItemMeta
-    }
+fun ItemStack.damageDurability(dmg: Int) {
+    itemMeta = (itemMeta as Damageable).apply {
+        val k = getEnchantmentLevel(Enchantment.DURABILITY) + 1
+        damage += ceil(dmg.toDouble() / k.toDouble()).toInt()
+        if (type.maxDurability <= damage) {
+            type = AIR
+        }
+    } as ItemMeta
 }
 
 // Функция определения оставшейся прочности у предмета
@@ -128,7 +126,9 @@ object MainListener : Listener {
                                     return@matrixLoop false
                                 }
                                 // Наносим разрушение инструменту
-                                setItemInMainHand(itemInMainHand.damageDurability(dmg))
+                                setItemInMainHand(itemInMainHand.apply {
+                                    damageDurability(dmg)
+                                })
                             }
                             else -> {
                             }
